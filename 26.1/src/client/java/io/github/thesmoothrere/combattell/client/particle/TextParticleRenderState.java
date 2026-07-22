@@ -58,7 +58,7 @@ public class TextParticleRenderState implements ParticleGroupRenderState {
                     poseStack,
                     xOffset, 0.0F,
                     data.text,
-                    true, // Drop shadow enabled
+                    false,
                     Font.DisplayMode.NORMAL,
                     15728880, // Full bright lightmaps so text glows in shadows
                     data.color,

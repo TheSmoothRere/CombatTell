@@ -57,11 +57,18 @@ public class TextParticle extends Particle {
 
     @Override
     public void tick() {
-        super.tick();
-        // Float gently upwards and slow down horizontal speeds
-        this.xd *= 0.92;
-        this.yd += 0.015;
-        this.zd *= 0.92;
+        // Save the previous position snapshots before updating
+        this.xo = this.x;
+        this.yo = this.y;
+        this.zo = this.z;
+
+        // Fade away over age
+        if (this.age++ >= this.lifetime) {
+            this.remove();
+            return;
+        }
+
+        this.y += 0.012;
     }
 
     @Override
