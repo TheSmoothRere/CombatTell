@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "${id}",
+  "version": "${version}+${minecraftVersion}",
+  "name": "${name}",
+  "description": "${description}",
+  "icon": "assets/${id}/icon.png",
+  "license": "${license}",
+  "authors": [
+    "${author}"
+  ],
+  "contact": {
+    "homepage":"https://github.com/TheSmoothRere/CombatTell",
+    "source": "https://github.com/TheSmoothRere/CombatTell",
+    "issues": "https://github.com/TheSmoothRere/CombatTell/issues"
+  },
+  "environment": "client",
+  "entrypoints": {
+    "main": [
+      "io.github.thesmoothrere.combattell.CombatTell"
+    ],
+    "client": [
+      "io.github.thesmoothrere.combattell.client.CombatTellClient"
+    ],
+    "relib": [
+      "io.github.thesmoothrere.combattell.config.CombatTellConfig"
+    ]
+  },
+  "mixins": [
+    {
+      "config": "combattell.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "minecraft": ">=${minecraftVersion}",
+    "java": "~${javaVersion}",
+    "relib": ">=0.1.1+26.1",
+    "fabric-api": ">=${fabricApiVersion}"
+  }
+}

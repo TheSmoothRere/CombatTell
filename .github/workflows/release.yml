@@ -1,0 +1,73 @@
+name: GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Parse version from tag
+        id: parse_tag
+        run: |
+          TAG=${{ github.ref_name }}
+          CLEAN_TAG=${TAG#v}
+          
+          # If '+' sign not exist, use default MC_VERSION to build
+          if [[ "$CLEAN_TAG" != *"+"* ]]; then
+            echo "::error::Wrong format tag! Tag format must be vMOD_VERSION+MC_VERSION (example: v1.0.0+1.20.1)"
+            exit 1
+          fi
+          
+          MOD_VERSION=$(echo $CLEAN_TAG | cut -d'+' -f1)
+          MC_VERSION=$(echo $CLEAN_TAG | cut -d'+' -f2)
+
+          echo "mc_version=$MC_VERSION" >> $GITHUB_OUTPUT
+          echo "mod_version=$MOD_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Read Root Properties
+        id: root_props
+        run: |
+          MOD_NAME=$(grep -w "modName" gradle.properties | cut -d'=' -f2 | xargs)
+          echo "mod_name=$MOD_NAME" >> $GITHUB_OUTPUT
+
+      - name: Read Submodule Properties
+        id: submodule_props
+        run: |
+          MC_VER="${{ steps.parse_tag.outputs.mc_version }}"
+          JAVA_VER=$(grep -w "javaVersion" "$MC_VER/gradle.properties" | cut -d'=' -f2 | xargs)
+          echo "java_version=$JAVA_VER" >> $GITHUB_OUTPUT
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ steps.submodule_props.outputs.java_version }}
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Build submodule jar
+        run: ./gradlew :${{ steps.parse_tag.outputs.mc_version }}:build
+
+      - name: Create github release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: "${{ steps.root_props.outputs.mod_name }} ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+          body_path: changelogs/${{ github.ref_name }}.md
+          files: |
+            ${{ steps.parse_tag.outputs.mc_version }}/build/libs/*.jar
+            LICENSE
+            changelogs/${{ github.ref_name }}.md
+            README.md
+          token: ${{ secrets.PAT_GITHUB }}

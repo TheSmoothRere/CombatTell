@@ -1,0 +1,53 @@
+name: Publish Mod Platforms
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Parse version from release tag
+        id: parse_tag
+        run: |
+          TAG=${{ github.event.release.tag_name }}
+          CLEAN_TAG=${TAG#v}
+          
+          if [[ "$CLEAN_TAG" != *"+"* ]]; then
+            echo "::error::Wrong format tag! Tag format must be vMOD_VERSION+MC_VERSION (example: v1.0.0+1.20.1)"
+            exit 1
+          fi
+          
+          MC_VERSION=$(echo $CLEAN_TAG | cut -d'+' -f2)
+          echo "mc_version=$MC_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Read Submodule Properties
+        id: submodule_props
+        run: |
+          MC_VER="${{ steps.parse_tag.outputs.mc_version }}"
+          JAVA_VER=$(grep -w "javaVersion" "$MC_VER/gradle.properties" | cut -d'=' -f2 | xargs)
+          echo "java_version=$JAVA_VER" >> $GITHUB_OUTPUT
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ steps.submodule_props.outputs.java_version }}
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Build submodule jar
+        run: |
+          ./gradlew :${{ steps.parse_tag.outputs.mc_version }}:build
+
+      - name: Run Mod Publisher
+        run: |
+          ./gradlew :${{ steps.parse_tag.outputs.mc_version }}:publishModToAll
+        env:
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
