@@ -14,8 +14,8 @@ import java.util.Deque;
 @Environment(EnvType.CLIENT)
 public final class ParticleManager {
     private static final float TORSO_HEIGHT_MULTIPLIER = 0.65f; // Where vertically on the entity's body to target
-    private static final double HITBOX_SAFETY_BUFFER = 0.35;   // Distance pushed out past the hitbox boundary
-    private static final float SIDE_SPREAD_MAX = 1.1f;         // Max spread range scale for left/right variance
+    private static final double HITBOX_SAFETY_BUFFER = 0.42;   // Distance pushed out past the hitbox boundary
+    private static final float SIDE_SPREAD_MAX = 1.3f;         // Max spread range scale for left/right variance
     private static final float SIDE_SPREAD_BIAS = 0.5f;       // Horizontal centering bias (0.5f is perfectly centered)
 
     private static final float PARTICLE_SCALE = 0.025f;          // Display scale size of the rendered numbers
@@ -32,13 +32,26 @@ public final class ParticleManager {
 
         String damageText = String.format("%.1f", damage);
 
-        // 1. Base center position of the entity's torso using our configurable height factor
-        Vec3 entityCenter = entity.position().add(0, entity.getBbHeight() * TORSO_HEIGHT_MULTIPLIER, 0);
-
         Minecraft minecraft = Minecraft.getInstance();
+
+        float bbHeight = entity.getBbHeight();
+        double baseHeightOffset = bbHeight * TORSO_HEIGHT_MULTIPLIER;
 
         // 2. Compute the vector pointing from the entity to the player's camera
         Vec3 cameraPos = minecraft.gameRenderer.getMainCamera().position();
+
+        Vec3 toCameraFromFeet = cameraPos.subtract(entity.position());
+
+        if (toCameraFromFeet.lengthSqr() > 0.001) {
+            Vec3 direction = toCameraFromFeet.normalize();
+            // direction.y represents the vertical pitch angle (-1.0 looking straight down, 1.0 looking straight up)
+            // If we are looking DOWN (direction.y is positive because camera is higher than feet),
+            // we dynamically increase the height offset to push the text up over the entity's head.
+            double dynamicVerticalShift = direction.y * (bbHeight * 0.4);
+            baseHeightOffset += dynamicVerticalShift;
+        }
+
+        Vec3 entityCenter = entity.position().add(0, baseHeightOffset, 0);
         Vec3 toCamera = cameraPos.subtract(entityCenter);
 
         Vec3 spawnPos = entityCenter;
