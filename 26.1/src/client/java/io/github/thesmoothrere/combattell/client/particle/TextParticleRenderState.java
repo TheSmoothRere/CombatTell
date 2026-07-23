@@ -9,6 +9,7 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.ParticleGroupRenderState;
 import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.util.LightCoordsUtil;
 import org.jspecify.annotations.NullMarked;
 
 import java.util.ArrayList;
@@ -60,7 +61,7 @@ public class TextParticleRenderState implements ParticleGroupRenderState {
                     data.text,
                     false,
                     Font.DisplayMode.NORMAL,
-                    15728880, // Full bright lightmaps so text glows in shadows
+                    LightCoordsUtil.FULL_BRIGHT, // Full bright lightmaps so text glows in shadows
                     data.color,
                     0, // Background color (Transparent background rectangle)
                     0
