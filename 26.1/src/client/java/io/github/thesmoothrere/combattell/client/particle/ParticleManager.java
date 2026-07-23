@@ -19,7 +19,8 @@ public final class ParticleManager {
     private static final float SIDE_SPREAD_BIAS = 0.5f;       // Horizontal centering bias (0.5f is perfectly centered)
 
     private static final float PARTICLE_SCALE = 0.025f;          // Display scale size of the rendered numbers
-    private static final int TEXT_COLOR = 0xFF0000;            // Base RGB color (Red)
+    private static final int COLOR_DAMAGE = 0xFF0000;            // Base RGB color (Red)
+    private static final int COLOR_HEAL = 0x00FF00;
 
     private static final Deque<TextParticle> PARTICLES = new ArrayListDeque<>();
 
@@ -27,10 +28,23 @@ public final class ParticleManager {
         /* This utility class should not be instantiated */
     }
 
-    public static void spawnDamageParticle(LivingEntity entity, float damage) {
-        if (damage == 0) return; // return early if there is no damage
+    public static void spawnTextParticle(LivingEntity entity, float healthDelta) {
+        if (healthDelta == 0) return; // return early if there is no healthDelta
 
-        String damageText = String.format("%.1f", damage);
+        // UPDATED: Determine dynamic color and string prefix markers based on polarity
+        int finalColor;
+        String finalRenderText;
+        float absoluteAmount = Math.abs(healthDelta);
+
+        if (healthDelta > 0) {
+            // Health dropped -> Damage
+            finalColor = COLOR_DAMAGE;
+            finalRenderText = String.format("-%.1f", absoluteAmount);
+        } else {
+            // Health rose -> Heal
+            finalColor = COLOR_HEAL;
+            finalRenderText = String.format("+%.1f", absoluteAmount);
+        }
 
         Minecraft minecraft = Minecraft.getInstance();
 
@@ -92,9 +106,9 @@ public final class ParticleManager {
                 (ClientLevel) entity.level(),
                 spawnPos,
                 tinyVelocity,
-                damageText,
+                finalRenderText,
                 finalDynamicScale,
-                TEXT_COLOR
+                finalColor
         );
 
         PARTICLES.add(particle);
@@ -113,7 +127,7 @@ public final class ParticleManager {
         // Max multiplier = 5.0f (limits maximum size at long range)
         float clampedDistanceScale = Mth.clamp(distanceMultiplier, 1.0F, 5.0F);
 
-        // 4. Combine them for the final layout value
+        // 4. Combine them for the final layout healthDelta
         return baseScale * clampedDistanceScale;
     }
 
