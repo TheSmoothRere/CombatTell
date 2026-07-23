@@ -51,12 +51,12 @@ public final class ParticleManager {
 
         float absoluteAmount = Math.abs(healthDelta);
         String health = isDamage ? String.format("-%.1f", absoluteAmount) : String.format("+%.1f", absoluteAmount);
-        int color = getHealtDeltaColor(isDamage);
+        int color = getHealthDeltaColor(isDamage);
 
         processTextParticle(entity, health, color);
     }
 
-    private static int getHealtDeltaColor(boolean isDamage) {
+    private static int getHealthDeltaColor(boolean isDamage) {
         int damageColor = ColorUtils.parseHexColor(CONFIG.damageColor().getValue(), CONFIG.damageColor().getDefaultValue(), DAMAGE_COLOR);
         int healColor = ColorUtils.parseHexColor(CONFIG.healColor().getValue(), CONFIG.healColor().getDefaultValue(), HEAL_COLOR);
         return isDamage ? damageColor : healColor;
@@ -113,14 +113,14 @@ public final class ParticleManager {
     }
 
     private static void spawnTextParticle(LivingEntity entity, String health, int color, Vec3 spawnPos, float initialScale, Minecraft minecraft) {
-        DoubleOption partilceLifetime = CONFIG.partilceLifetime();
+        DoubleOption particleLifetime = CONFIG.particleLifetime();
         TextParticle.Data particleData = new TextParticle.Data(
                 health,
                 initialScale,
                 color,
                 TimeUtils.secondsToTicks(
-                        partilceLifetime.getValue(),
-                        partilceLifetime.getDefaultValue()
+                        particleLifetime.getValue(),
+                        particleLifetime.getDefaultValue()
                 ),
                 CONFIG.particleRiseSpeed().getValue()
         );
