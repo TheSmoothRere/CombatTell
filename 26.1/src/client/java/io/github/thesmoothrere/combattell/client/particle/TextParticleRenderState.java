@@ -46,10 +46,7 @@ public class TextParticleRenderState implements ParticleGroupRenderState {
             // 2. Dynamic Billboarding (Face player camera angles precisely)
             poseStack.mulPose(Axis.YP.rotationDegrees(-camera.yRot));
             poseStack.mulPose(Axis.XP.rotationDegrees(camera.xRot));
-
-            // 3. Scale down text dimensions (Standard scale multiplier is around 0.025F)
-            float finalScale = data.scale * 0.025F;
-            poseStack.scale(-finalScale, -finalScale, finalScale);
+            poseStack.scale(-data.scale, -data.scale, data.scale);
 
             // 4. Center the numbers horizontally using cached widths
             float xOffset = -data.width / 2.0F;
