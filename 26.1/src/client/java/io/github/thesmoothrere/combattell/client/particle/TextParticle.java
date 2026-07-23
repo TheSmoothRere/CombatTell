@@ -21,6 +21,8 @@ public class TextParticle extends Particle {
     private final float initialScale;
     private final int color;
 
+    private static final double VERTICAL_RISE_SPEED = 0.012; // Lower to hover tighter, raise to drift faster
+
     public TextParticle(ClientLevel clientLevel, Vec3 pos, Vec3 velocity, String text, float initialScale, int color) {
         super(clientLevel, pos.x, pos.y, pos.z, velocity.x, velocity.y, velocity.z);
 
@@ -68,7 +70,7 @@ public class TextParticle extends Particle {
             return;
         }
 
-        this.y += 0.012;
+        this.y += VERTICAL_RISE_SPEED;
     }
 
     @Override

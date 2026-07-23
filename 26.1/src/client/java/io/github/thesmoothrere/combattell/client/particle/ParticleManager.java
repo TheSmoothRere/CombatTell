@@ -9,6 +9,14 @@ import net.minecraft.world.phys.Vec3;
 
 @Environment(EnvType.CLIENT)
 public final class ParticleManager {
+    private static final float TORSO_HEIGHT_MULTIPLIER = 0.7f; // Where vertically on the entity's body to target
+    private static final double HITBOX_SAFETY_BUFFER = 0.35;   // Distance pushed out past the hitbox boundary
+    private static final float SIDE_SPREAD_MAX = 1.1f;         // Max spread range scale for left/right variance
+    private static final float SIDE_SPREAD_BIAS = 0.5f;       // Horizontal centering bias (0.5f is perfectly centered)
+
+    private static final float PARTICLE_SCALE = 1.0f;          // Display scale size of the rendered numbers
+    private static final int TEXT_COLOR = 0xFF0000;            // Base RGB color (Red)
+
     private ParticleManager() {
         /* This utility class should not be instantiated */
     }
@@ -16,8 +24,8 @@ public final class ParticleManager {
     public static void spawnDamageParticle(LivingEntity entity, float damage) {
         String damageText = String.format("%.1f", damage);
 
-        // 1. Base center position of the entity's torso
-        Vec3 entityCenter = entity.position().add(0, entity.getBbHeight() * 0.7, 0);
+        // 1. Base center position of the entity's torso using our configurable height factor
+        Vec3 entityCenter = entity.position().add(0, entity.getBbHeight() * TORSO_HEIGHT_MULTIPLIER, 0);
 
         // 2. Compute the vector pointing from the entity to the player's camera
         Vec3 cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().position();
@@ -26,34 +34,34 @@ public final class ParticleManager {
         Vec3 spawnPos = entityCenter;
 
         if (toCamera.lengthSqr() > 0.001) {
-            // Flatten the vector to the horizontal plane to prevent vertical camera angles from skewing the side math
+            // Flatten the vector to the horizontal plane
             Vec3 forwardDirection = new Vec3(toCamera.x, 0.0, toCamera.z).normalize();
 
-            // Calculate the camera's relative "right" vector via cross product
+            // Calculate the camera's relative "right" vector
             Vec3 relativeRight = new Vec3(0.0, 1.0, 0.0).cross(forwardDirection).normalize();
 
-            // 3. Distance math: Pull it completely out in front of the entity's body
-            double frontPushDistance = (entity.getBbWidth() / 2.0) + 0.35;
+            // 3. Distance math: Pull out in front of the hitbox using the buffer constant
+            double frontPushDistance = (entity.getBbWidth() / 2.0) + HITBOX_SAFETY_BUFFER;
 
-            // 4. Spread math: Pick a random offset to the left or right (e.g., between -0.35 and +0.35 blocks)
-            double randomSideOffset = (entity.getRandom().nextFloat() - 0.55f) * 0.7f;
+            // 4. Spread math: Configurable left/right horizontal deviation
+            double randomSideOffset = (entity.getRandom().nextFloat() - SIDE_SPREAD_BIAS) * SIDE_SPREAD_MAX;
 
-            // Combine them: Start at center -> Push Forward (towards player) -> Offset Side (left/right)
+            // Combine positions
             spawnPos = entityCenter
                     .add(forwardDirection.scale(frontPushDistance))
                     .add(relativeRight.scale(randomSideOffset));
         }
 
-        // Tiny vertical drift velocity to keep it feeling dynamic
-        Vec3 tinyVelocity = new Vec3(0.0, 0.015, 0.0);
+        // Passed as a placeholder layout since physics movement now handles custom vertical increments
+        Vec3 tinyVelocity = Vec3.ZERO;
 
         TextParticle particle = new TextParticle(
                 (ClientLevel) entity.level(),
                 spawnPos,
                 tinyVelocity,
                 damageText,
-                1.0f,
-                0xFF0000
+                PARTICLE_SCALE,
+                TEXT_COLOR
         );
 
         Minecraft.getInstance().particleEngine.add(particle);
