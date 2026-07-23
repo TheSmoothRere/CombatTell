@@ -43,10 +43,10 @@ public abstract class LivingEntityMixin {
 
             // Check if they actually lost health (damage) rather than healing
             if (this.clientLastHealth != newHealth) {
-                float damageDealt = this.clientLastHealth - newHealth;
+                float healthDelta = this.clientLastHealth - newHealth;
 
                 // Pass both the entity and the delta down to the manager
-                ParticleManager.spawnTextParticle(entity, damageDealt);
+                ParticleManager.onHealthChange(entity, healthDelta);
             }
 
             // Cache the current health value for the next network change event

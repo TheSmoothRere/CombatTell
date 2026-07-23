@@ -5,7 +5,6 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.util.ArrayListDeque;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 
@@ -28,24 +27,28 @@ public final class ParticleManager {
         /* This utility class should not be instantiated */
     }
 
-    public static void spawnTextParticle(LivingEntity entity, float healthDelta) {
+    public static void onHealthChange(LivingEntity entity, float healthDelta) {
         if (healthDelta == 0) return; // return early if there is no healthDelta
 
         // UPDATED: Determine dynamic color and string prefix markers based on polarity
-        int finalColor;
-        String finalRenderText;
+        int color;
+        String health;
         float absoluteAmount = Math.abs(healthDelta);
 
         if (healthDelta > 0) {
             // Health dropped -> Damage
-            finalColor = COLOR_DAMAGE;
-            finalRenderText = String.format("-%.1f", absoluteAmount);
+            color = COLOR_DAMAGE;
+            health = String.format("-%.1f", absoluteAmount);
         } else {
             // Health rose -> Heal
-            finalColor = COLOR_HEAL;
-            finalRenderText = String.format("+%.1f", absoluteAmount);
+            color = COLOR_HEAL;
+            health = String.format("+%.1f", absoluteAmount);
         }
 
+        processTextParticle(entity, health, color);
+    }
+
+    private static void processTextParticle(LivingEntity entity, String health, int color) {
         Minecraft minecraft = Minecraft.getInstance();
 
         float bbHeight = entity.getBbHeight();
@@ -60,7 +63,7 @@ public final class ParticleManager {
             Vec3 direction = toCameraFromFeet.normalize();
             // direction.y represents the vertical pitch angle (-1.0 looking straight down, 1.0 looking straight up)
             // If we are looking DOWN (direction.y is positive because camera is higher than feet),
-            // we dynamically increase the height offset to push the text up over the entity's head.
+            // we dynamically increase the height offset to push the health up over the entity's head.
             double dynamicVerticalShift = direction.y * (bbHeight * 0.5);
             baseHeightOffset += dynamicVerticalShift;
         }
@@ -92,17 +95,19 @@ public final class ParticleManager {
         ensureParticleLimit(minecraft);
 
         // Passed as a placeholder layout since physics movement now handles custom vertical increments
-        Vec3 tinyVelocity = Vec3.ZERO;
-
         float initialScale = PARTICLE_SCALE * entity.getScale();
 
+        spawnTextParticle(entity, health, color, spawnPos, initialScale, minecraft);
+    }
+
+    private static void spawnTextParticle(LivingEntity entity, String health, int color, Vec3 spawnPos, float initialScale, Minecraft minecraft) {
         TextParticle particle = new TextParticle(
                 (ClientLevel) entity.level(),
                 spawnPos,
-                tinyVelocity,
-                finalRenderText,
+                Vec3.ZERO,
+                health,
                 initialScale,
-                finalColor
+                color
         );
 
         PARTICLES.add(particle);
