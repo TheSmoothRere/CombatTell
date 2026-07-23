@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.ParticleGroupRenderState;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.LightCoordsUtil;
+import net.minecraft.util.Mth;
 import org.jspecify.annotations.NullMarked;
 
 import java.util.ArrayList;
@@ -43,10 +44,16 @@ public class TextParticleRenderState implements ParticleGroupRenderState {
             // 1. Move to the particle's spatial position in the world relative to camera
             poseStack.translate(data.x, data.y, data.z);
 
+            // ----- RPG DYNAMIC DISTANCE SCALING -----
+            // Since data.x, data.y, data.z are relative to the camera,
+            // the distance is simply the length of this position vector.
+            float dynamicScale = scaleBasedDistanceFactor(data);
+            // ----------------------------------------
+
             // 2. Dynamic Billboarding (Face player camera angles precisely)
             poseStack.mulPose(Axis.YP.rotationDegrees(-camera.yRot));
             poseStack.mulPose(Axis.XP.rotationDegrees(camera.xRot));
-            poseStack.scale(-data.scale, -data.scale, data.scale);
+            poseStack.scale(-dynamicScale, -dynamicScale, dynamicScale);
 
             // 4. Center the numbers horizontally using cached widths
             float xOffset = -data.width / 2.0F;
@@ -66,5 +73,19 @@ public class TextParticleRenderState implements ParticleGroupRenderState {
 
             poseStack.popPose();
         }
+    }
+
+    private static float scaleBasedDistanceFactor(PreparedText data) {
+        double currentDistance = Math.sqrt(data.x * data.x + data.y * data.y + data.z * data.z);
+
+        // Linear scale scaling: Grow 1:1 with distance so it stays perfectly uniform on screen
+        float distanceMultiplier = (float) currentDistance * 0.15f;
+
+        // Clamp the scale multiplier so it doesn't get unreadably tiny up close
+        // or cover the screen if you zoom/teleport far away.
+        float clampedDistanceScale = Mth.clamp(distanceMultiplier, 1.0F, 5.0F);
+
+        // Multiply the original base scale (stored inside data when spawned) by our dynamic factor
+        return data.scale * clampedDistanceScale;
     }
 }
