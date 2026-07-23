@@ -75,8 +75,17 @@ public final class ParticleManager {
     }
 
     private static int getHealthDeltaColor(boolean isDamage) {
-        int damageColor = ColorUtils.parseHexColor(CONFIG.damageColor().getValue(), CONFIG.damageColor().getDefaultValue(), DAMAGE_COLOR);
-        int healColor = ColorUtils.parseHexColor(CONFIG.healColor().getValue(), CONFIG.healColor().getDefaultValue(), HEAL_COLOR);
+        int damageColor = ColorUtils.parseHexColor(
+                CONFIG.damageColor().getValue(),
+                CONFIG.damageColor().getDefaultValue(),
+                DAMAGE_COLOR
+        );
+        int healColor = ColorUtils.parseHexColor(
+                CONFIG.healColor().getValue(),
+                CONFIG.healColor().getDefaultValue(),
+                HEAL_COLOR
+        );
+
         return isDamage ? damageColor : healColor;
     }
 
