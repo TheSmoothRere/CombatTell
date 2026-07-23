@@ -16,6 +16,9 @@ public class CombatTellConfig implements ConfigApi {
     private final DoubleOption particleLifetime = new DoubleOption("particleLifetime", 1.5, 0.1, 10.0); // particle lifetime in seconds
     private final DoubleOption particleRiseSpeed = new DoubleOption("particleRiseSpeed", 0.012, 0.0, 5.0); // Lower to hover tighter, raise to drift faster
     private final DoubleOption baseParticleScale = new DoubleOption("baseParticleScale", 0.025, 0.025, 1.0);
+    private final DoubleOption torsoHeightMultiplier = new DoubleOption("torsoHeightMultiplier", 0.65, 0.5, 1.0);
+    private final DoubleOption hitboxSafetyBuffer = new DoubleOption("hitboxSafetyBuffer", 0.42, 0.1, 5.0);
+    private final DoubleOption maxSpreadSide = new DoubleOption("maxSpreadSide", 1.3, 0.5, 5.0);
 
     public EnumOption<ParticleDisplays> particleDisplays() {
         return particleDisplays;
@@ -39,5 +42,17 @@ public class CombatTellConfig implements ConfigApi {
 
     public DoubleOption baseParticleScale() {
         return baseParticleScale;
+    }
+
+    public DoubleOption torsoHeightMultiplier() {
+        return torsoHeightMultiplier;
+    }
+
+    public DoubleOption hitboxSafetyBuffer() {
+        return hitboxSafetyBuffer;
+    }
+
+    public DoubleOption maxSpreadSide() {
+        return maxSpreadSide;
     }
 }

@@ -22,10 +22,6 @@ public final class ParticleManager {
     private static final CombatTellConfig CONFIG = ConfigManager.get(CombatTellConfig.class);
     private static final ParticleConfig CONFIG_SCRATCHPAD = new ParticleConfig();
 
-    private static final float TORSO_HEIGHT_MULTIPLIER = 0.65f; // Where vertically on the entity's body to target
-    private static final double HITBOX_SAFETY_BUFFER = 0.42;   // Distance pushed out past the hitbox boundary
-    private static final float SIDE_SPREAD_MAX = 1.3f;         // Max spread range scale for left/right variance
-
     private static final int DAMAGE_COLOR = 0xFF0000;            // Base RGB color (Red)
     private static final int HEAL_COLOR = 0x00FF00;
 
@@ -89,7 +85,7 @@ public final class ParticleManager {
         ensureParticleLimit(minecraft);
 
         float bbHeight = entity.getBbHeight();
-        double baseHeightOffset = bbHeight * TORSO_HEIGHT_MULTIPLIER;
+        double baseHeightOffset = bbHeight * CONFIG.torsoHeightMultiplier().getValue();
 
         // 2. Compute the vector pointing from the entity to the player's camera
         Vec3 vanillaCam = minecraft.gameRenderer.getMainCamera().position();
@@ -114,8 +110,8 @@ public final class ParticleManager {
             dir.normalize(); // forward3D
             side.set(0.0, 1.0, 0.0).cross(dir).normalize();
 
-            double frontPushDistance = (entity.getBbWidth() / 2.0) + HITBOX_SAFETY_BUFFER;
-            double randomSideOffset = (entity.getRandom().nextFloat() - 0.5f) * SIDE_SPREAD_MAX;
+            double frontPushDistance = (entity.getBbWidth() / 2.0) + CONFIG.hitboxSafetyBuffer().getValue();
+            double randomSideOffset = (entity.getRandom().nextFloat() - 0.5f) * CONFIG.maxSpreadSide().getValue();
 
             // Apply push modifications directly to mutable coordinates
             spawn.add(dir.x * frontPushDistance, dir.y * frontPushDistance, dir.z * frontPushDistance);
