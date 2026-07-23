@@ -1,5 +1,10 @@
 package io.github.thesmoothrere.combattell.client.particle;
 
+import io.github.thesmoothrere.combattell.config.CombatTellConfig;
+import io.github.thesmoothrere.combattell.util.ColorUtils;
+import io.github.thesmoothrere.combattell.util.TimeUtils;
+import io.github.thesmoothrere.relib.config.ConfigManager;
+import io.github.thesmoothrere.relib.config.option.DoubleOption;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
@@ -12,14 +17,15 @@ import java.util.Deque;
 
 @Environment(EnvType.CLIENT)
 public final class ParticleManager {
+    private static final CombatTellConfig CONFIG = ConfigManager.get(CombatTellConfig.class);
+
     private static final float TORSO_HEIGHT_MULTIPLIER = 0.65f; // Where vertically on the entity's body to target
     private static final double HITBOX_SAFETY_BUFFER = 0.42;   // Distance pushed out past the hitbox boundary
     private static final float SIDE_SPREAD_MAX = 1.3f;         // Max spread range scale for left/right variance
     private static final float SIDE_SPREAD_BIAS = 0.5f;       // Horizontal centering bias (0.5f is perfectly centered)
 
-    private static final float PARTICLE_SCALE = 0.025f;          // Display scale size of the rendered numbers
-    private static final int COLOR_DAMAGE = 0xFF0000;            // Base RGB color (Red)
-    private static final int COLOR_HEAL = 0x00FF00;
+    private static final int DAMAGE_COLOR = 0xFF0000;            // Base RGB color (Red)
+    private static final int HEAL_COLOR = 0x00FF00;
 
     private static final Deque<TextParticle> PARTICLES = new ArrayListDeque<>();
 
@@ -30,26 +36,35 @@ public final class ParticleManager {
     public static void onHealthChange(LivingEntity entity, float healthDelta) {
         if (healthDelta == 0) return; // return early if there is no healthDelta
 
-        // UPDATED: Determine dynamic color and string prefix markers based on polarity
-        int color;
-        String health;
-        float absoluteAmount = Math.abs(healthDelta);
+        boolean isDamage = healthDelta > 0;
 
-        if (healthDelta > 0) {
-            // Health dropped -> Damage
-            color = COLOR_DAMAGE;
-            health = String.format("-%.1f", absoluteAmount);
-        } else {
-            // Health rose -> Heal
-            color = COLOR_HEAL;
-            health = String.format("+%.1f", absoluteAmount);
+        switch (CONFIG.particleDisplays().getValue()) {
+            case DAMAGE:
+                if (!isDamage) return;
+                break;
+            case HEAL:
+                if (isDamage) return;
+                break;
+            case DAMAGE_HEAL:
+                break;
         }
+
+        float absoluteAmount = Math.abs(healthDelta);
+        String health = isDamage ? String.format("-%.1f", absoluteAmount) : String.format("+%.1f", absoluteAmount);
+        int color = getHealtDeltaColor(isDamage);
 
         processTextParticle(entity, health, color);
     }
 
+    private static int getHealtDeltaColor(boolean isDamage) {
+        int damageColor = ColorUtils.parseHexColor(CONFIG.damageColor().getValue(), CONFIG.damageColor().getDefaultValue(), DAMAGE_COLOR);
+        int healColor = ColorUtils.parseHexColor(CONFIG.healColor().getValue(), CONFIG.healColor().getDefaultValue(), HEAL_COLOR);
+        return isDamage ? damageColor : healColor;
+    }
+
     private static void processTextParticle(LivingEntity entity, String health, int color) {
         Minecraft minecraft = Minecraft.getInstance();
+        ensureParticleLimit(minecraft);
 
         float bbHeight = entity.getBbHeight();
         double baseHeightOffset = bbHeight * TORSO_HEIGHT_MULTIPLIER;
@@ -77,8 +92,7 @@ public final class ParticleManager {
             // Flatten the vector to the horizontal plane
             Vec3 forward3D = toCamera.normalize();
 
-            // Calculate the camera's relative "right" vector
-            Vec3 relativeRight = new Vec3(0.0, 1.0, 0.0).cross(forward3D).normalize();
+            Vec3 relativeSide = new Vec3(0.0, 1.0, 0.0).cross(forward3D).normalize();
 
             // 3. Distance math: Pull out in front of the hitbox using the buffer constant
             double frontPushDistance = (entity.getBbWidth() / 2.0) + HITBOX_SAFETY_BUFFER;
@@ -89,25 +103,33 @@ public final class ParticleManager {
             // Combine positions
             spawnPos = entityCenter
                     .add(forward3D.scale(frontPushDistance))
-                    .add(relativeRight.scale(randomSideOffset));
+                    .add(relativeSide.scale(randomSideOffset));
         }
 
-        ensureParticleLimit(minecraft);
-
         // Passed as a placeholder layout since physics movement now handles custom vertical increments
-        float initialScale = PARTICLE_SCALE * entity.getScale();
+        float initialScale = CONFIG.baseParticleScale().getValue().floatValue() * entity.getScale();
 
         spawnTextParticle(entity, health, color, spawnPos, initialScale, minecraft);
     }
 
     private static void spawnTextParticle(LivingEntity entity, String health, int color, Vec3 spawnPos, float initialScale, Minecraft minecraft) {
+        DoubleOption partilceLifetime = CONFIG.partilceLifetime();
+        TextParticle.Data particleData = new TextParticle.Data(
+                health,
+                initialScale,
+                color,
+                TimeUtils.secondsToTicks(
+                        partilceLifetime.getValue(),
+                        partilceLifetime.getDefaultValue()
+                ),
+                CONFIG.particleRiseSpeed().getValue()
+        );
+
         TextParticle particle = new TextParticle(
                 (ClientLevel) entity.level(),
                 spawnPos,
                 Vec3.ZERO,
-                health,
-                initialScale,
-                color
+                particleData
         );
 
         PARTICLES.add(particle);

@@ -31,8 +31,8 @@ public class TextParticleGroup extends ParticleGroup<TextParticle> {
             if (frustum.pointInFrustum(particle.getX(), particle.getY(), particle.getZ())) {
                 try {
                     particle.extract(this.particleRenderState, camera, partialTickTime);
-                } catch (Throwable throwable) {
-                    CrashReport report = CrashReport.forThrowable(throwable, "Rendering Particle");
+                } catch (Exception exception) {
+                    CrashReport report = CrashReport.forThrowable(exception, "Rendering Particle");
                     CrashReportCategory category = report.addCategory("Particle being rendered");
                     category.setDetail("Particle", particle::toString);
                     category.setDetail("Particle Type", this.particleType::toString);

@@ -20,21 +20,21 @@ public class TextParticle extends Particle {
     private final float textWidth;
     private final float initialScale;
     private final int color;
+    private final double riseSpeed;
 
-    private static final double VERTICAL_RISE_SPEED = 0.012; // Lower to hover tighter, raise to drift faster
-
-    public TextParticle(ClientLevel clientLevel, Vec3 pos, Vec3 velocity, String text, float initialScale, int color) {
+    public TextParticle(ClientLevel clientLevel, Vec3 pos, Vec3 velocity, TextParticle.Data data) {
         super(clientLevel, pos.x, pos.y, pos.z, velocity.x, velocity.y, velocity.z);
 
         // Cache visual text structures immediately to preserve CPU cycles during rendering
         Font font = Minecraft.getInstance().font;
-        this.formattedText = Component.literal(text).getVisualOrderText();
+        this.formattedText = Component.literal(data.text()).getVisualOrderText();
         this.textWidth = font.width(this.formattedText);
 
-        this.initialScale = initialScale;
-        this.color = color;
+        this.initialScale = data.initialScale();
+        this.color = data.color();
         this.gravity = 0.0F;
-        this.lifetime = 30; // 1.5 seconds lifespan
+        this.lifetime = data.lifetimeInSeconds();
+        this.riseSpeed = data.riseSpeed();
     }
 
     public void extract(TextParticleRenderState state, Camera camera, float partialTickTime) {
@@ -70,7 +70,7 @@ public class TextParticle extends Particle {
             return;
         }
 
-        this.y += VERTICAL_RISE_SPEED;
+        this.y += this.riseSpeed;
     }
 
     @Override
@@ -88,5 +88,13 @@ public class TextParticle extends Particle {
 
     public double getZ() {
         return this.z;
+    }
+
+    public record Data(
+            String text,
+            float initialScale,
+            int color,
+            int lifetimeInSeconds,
+            Double riseSpeed) {
     }
 }

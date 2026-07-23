@@ -18,7 +18,16 @@ import java.util.List;
 
 @Environment(EnvType.CLIENT)
 public class TextParticleRenderState implements ParticleGroupRenderState {
-    public record PreparedText(FormattedCharSequence text, float width, float x, float y, float z, int color, float scale) {}
+    public record PreparedText(
+            FormattedCharSequence text,
+            float width,
+            float x,
+            float y,
+            float z,
+            int color,
+            float scale) {
+    }
+
     private final List<PreparedText> activeTexts = new ArrayList<>();
 
     public void add(FormattedCharSequence text, float width, float x, float y, float z, int color, float scale) {
@@ -78,7 +87,7 @@ public class TextParticleRenderState implements ParticleGroupRenderState {
     private static float scaleBasedDistanceFactor(PreparedText data) {
         double currentDistance = Math.sqrt(data.x * data.x + data.y * data.y + data.z * data.z);
 
-        // Linear scale scaling: Grow 1:1 with distance so it stays perfectly uniform on screen
+        // Linear scale scaling
         float distanceMultiplier = (float) currentDistance * 0.15f;
 
         // Clamp the scale multiplier so it doesn't get unreadably tiny up close
