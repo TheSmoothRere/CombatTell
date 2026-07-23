@@ -42,10 +42,14 @@ public final class ParticleManager {
         Vec3 toCamera = cameraPos.subtract(entityCenter);
 
         Vec3 spawnPos = entityCenter;
+        double distance = 0.0;
 
         if (toCamera.lengthSqr() > 0.001) {
             // Flatten the vector to the horizontal plane
             Vec3 forward3D = toCamera.normalize();
+
+            // Capture the actual linear distance to the player camera
+            distance = toCamera.length();
 
             // Calculate the camera's relative "right" vector
             Vec3 relativeRight = new Vec3(0.0, 1.0, 0.0).cross(forward3D).normalize();
@@ -67,20 +71,37 @@ public final class ParticleManager {
         // Passed as a placeholder layout since physics movement now handles custom vertical increments
         Vec3 tinyVelocity = Vec3.ZERO;
 
-        float scaleMultiplier = Mth.sqrt(entity.getScale());
-        float initialScale = PARTICLE_SCALE * scaleMultiplier;
+        // ----- RPG-STYLE DISTANCE SCALING -----
+        // 1. Start with the default base particle scale modified by the entity's model scale
+        float finalDynamicScale = scaleBasedDistanceFactor(entity, distance);
 
         TextParticle particle = new TextParticle(
                 (ClientLevel) entity.level(),
                 spawnPos,
                 tinyVelocity,
                 damageText,
-                initialScale,
+                finalDynamicScale,
                 TEXT_COLOR
         );
 
         PARTICLES.add(particle);
         minecraft.particleEngine.add(particle);
+    }
+
+    private static float scaleBasedDistanceFactor(LivingEntity entity, double distance) {
+        float baseScale = PARTICLE_SCALE * entity.getScale();
+
+        // 2. Calculate a distance multiplier.
+        // For example: At 10 blocks away, scale becomes 1.0. At 30 blocks away, scale increases.
+        float distanceMultiplier = (float) (distance * 0.15);
+
+        // 3. Clamp the multiplier so text doesn't become tiny up close or giant from chunks away.
+        // Min multiplier = 1.0f (won't shrink below normal size up close)
+        // Max multiplier = 5.0f (limits maximum size at long range)
+        float clampedDistanceScale = Mth.clamp(distanceMultiplier, 1.0F, 5.0F);
+
+        // 4. Combine them for the final layout value
+        return baseScale * clampedDistanceScale;
     }
 
     private static void ensureParticleLimit(Minecraft minecraft) {
