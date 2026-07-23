@@ -22,18 +22,18 @@ public class TextParticle extends Particle {
     private final int color;
     private final double riseSpeed;
 
-    public TextParticle(ClientLevel clientLevel, Vec3 pos, Vec3 velocity, TextParticle.Data data) {
+    public TextParticle(ClientLevel clientLevel, Vec3 pos, Vec3 velocity, ParticleConfig data) {
         super(clientLevel, pos.x, pos.y, pos.z, velocity.x, velocity.y, velocity.z);
 
         // Cache visual text structures immediately to preserve CPU cycles during rendering
         Font font = Minecraft.getInstance().font;
-        this.formattedText = Component.literal(data.text()).getVisualOrderText();
+        this.formattedText = Component.literal(data.health()).getVisualOrderText();
         this.textWidth = font.width(this.formattedText);
 
         this.initialScale = data.initialScale();
         this.color = data.color();
         this.gravity = 0.0F;
-        this.lifetime = data.lifetimeInSeconds();
+        this.lifetime = data.lifetimeTicks();
         this.riseSpeed = data.riseSpeed();
     }
 

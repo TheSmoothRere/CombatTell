@@ -13,70 +13,98 @@ import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.util.Mth;
 import org.jspecify.annotations.NullMarked;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
 @Environment(EnvType.CLIENT)
 public class TextParticleRenderState implements ParticleGroupRenderState {
-    public record PreparedText(
-            FormattedCharSequence text,
-            float width,
-            float x,
-            float y,
-            float z,
-            int color,
-            float scale) {
-    }
 
-    private final List<PreparedText> activeTexts = new ArrayList<>();
+    private static final int INITIAL_CAPACITY = 256;
+
+    // Mojang Pattern: Flat parallel primitive arrays + an object reference array
+    private FormattedCharSequence[] textValues = new FormattedCharSequence[INITIAL_CAPACITY];
+    private float[] floatValues = new float[INITIAL_CAPACITY * 5]; // 5 floats per particle (width, x, y, z, scale)
+    private int[] colorValues = new int[INITIAL_CAPACITY];         // 1 int per particle
+
+    private int capacity = INITIAL_CAPACITY;
+    private int activeCount = 0;
+
+    // Allocate once for the class lifespan to completely protect submit() passes
+    private final PoseStack poseStack = new PoseStack();
 
     public void add(FormattedCharSequence text, float width, float x, float y, float z, int color, float scale) {
-        this.activeTexts.add(new PreparedText(text, width, x, y, z, color, scale));
+        if (this.activeCount >= this.capacity) {
+            this.grow();
+        }
+
+        // Store the text object reference
+        this.textValues[this.activeCount] = text;
+
+        // Pack spatial & scaling properties contiguously into the float array
+        int floatIdx = this.activeCount * 5;
+        this.floatValues[floatIdx++] = width;
+        this.floatValues[floatIdx++] = x;
+        this.floatValues[floatIdx++] = y;
+        this.floatValues[floatIdx++] = z;
+        this.floatValues[floatIdx]   = scale;
+
+        // Pack color data
+        this.colorValues[this.activeCount] = color;
+
+        this.activeCount++;
     }
 
     @Override
     public void clear() {
-        this.activeTexts.clear();
+        // CRITICAL: Clean out the object array references so text components don't leak memory
+        // after their parent particles age out and die.
+        Arrays.fill(this.textValues, 0, this.activeCount, null);
+
+        // Simply reset our primitive pointer index counters
+        this.activeCount = 0;
     }
 
     @Override
     @NullMarked
     public void submit(SubmitNodeCollector submitNodeCollector, CameraRenderState camera) {
-        if (this.activeTexts.isEmpty()) return;
+        if (this.activeCount == 0) return;
 
-        // Re-use a single PoseStack instance for the entire batch to optimize allocations
-        PoseStack poseStack = new PoseStack();
+        for (int i = 0; i < this.activeCount; i++) {
+            FormattedCharSequence text = this.textValues[i];
 
-        for (PreparedText data : this.activeTexts) {
+            int floatIdx = i * 5;
+            float width = this.floatValues[floatIdx++];
+            float x     = this.floatValues[floatIdx++];
+            float y     = this.floatValues[floatIdx++];
+            float z     = this.floatValues[floatIdx++];
+            float scale = this.floatValues[floatIdx];
+
+            int color = this.colorValues[i];
+
             poseStack.pushPose();
 
-            // 1. Move to the particle's spatial position in the world relative to camera
-            poseStack.translate(data.x, data.y, data.z);
+            // 1. Move to the particle position relative to the camera
+            poseStack.translate(x, y, z);
 
-            // ----- RPG DYNAMIC DISTANCE SCALING -----
-            // Since data.x, data.y, data.z are relative to the camera,
-            // the distance is simply the length of this position vector.
-            float dynamicScale = scaleBasedDistanceFactor(data);
-            // ----------------------------------------
+            // 2. Compute dynamic distance scale factor using flat variable data
+            float dynamicScale = scaleBasedDistanceFactor(x, y, z, scale);
 
-            // 2. Dynamic Billboarding (Face player camera angles precisely)
+            // 3. Precision camera tracking billboarding
             poseStack.mulPose(Axis.YP.rotationDegrees(-camera.yRot));
             poseStack.mulPose(Axis.XP.rotationDegrees(camera.xRot));
             poseStack.scale(-dynamicScale, -dynamicScale, dynamicScale);
 
-            // 4. Center the numbers horizontally using cached widths
-            float xOffset = -data.width / 2.0F;
+            float xOffset = -width / 2.0F;
 
-            // 5. Submit text node directly to the transparent render pass graph
+            // 4. Send to engine draw passes
             submitNodeCollector.submitText(
                     poseStack,
                     xOffset, 0.0F,
-                    data.text,
+                    text,
                     false,
                     Font.DisplayMode.NORMAL,
-                    LightCoordsUtil.FULL_BRIGHT, // Full bright lightmaps so text glows in shadows
-                    data.color,
-                    0, // Background color (Transparent background rectangle)
+                    LightCoordsUtil.FULL_BRIGHT,
+                    color,
+                    0,
                     0
             );
 
@@ -84,17 +112,17 @@ public class TextParticleRenderState implements ParticleGroupRenderState {
         }
     }
 
-    private static float scaleBasedDistanceFactor(PreparedText data) {
-        double currentDistance = Math.sqrt(data.x * data.x + data.y * data.y + data.z * data.z);
+    private void grow() {
+        this.capacity *= 2;
+        this.textValues = Arrays.copyOf(this.textValues, this.capacity);
+        this.floatValues = Arrays.copyOf(this.floatValues, this.capacity * 5);
+        this.colorValues = Arrays.copyOf(this.colorValues, this.capacity);
+    }
 
-        // Linear scale scaling
+    private static float scaleBasedDistanceFactor(float x, float y, float z, float scale) {
+        double currentDistance = Math.sqrt(x * x + y * y + z * z);
         float distanceMultiplier = (float) currentDistance * 0.15f;
-
-        // Clamp the scale multiplier so it doesn't get unreadably tiny up close
-        // or cover the screen if you zoom/teleport far away.
         float clampedDistanceScale = Mth.clamp(distanceMultiplier, 1.0F, 5.0F);
-
-        // Multiply the original base scale (stored inside data when spawned) by our dynamic factor
-        return data.scale * clampedDistanceScale;
+        return scale * clampedDistanceScale;
     }
 }

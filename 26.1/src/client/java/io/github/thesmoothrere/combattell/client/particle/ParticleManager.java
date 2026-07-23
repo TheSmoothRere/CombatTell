@@ -9,15 +9,18 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.particle.Particle;
 import net.minecraft.util.ArrayListDeque;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Vector3d;
 
 import java.util.Deque;
 
 @Environment(EnvType.CLIENT)
 public final class ParticleManager {
     private static final CombatTellConfig CONFIG = ConfigManager.get(CombatTellConfig.class);
+    private static final ParticleConfig CONFIG_SCRATCHPAD = new ParticleConfig();
 
     private static final float TORSO_HEIGHT_MULTIPLIER = 0.65f; // Where vertically on the entity's body to target
     private static final double HITBOX_SAFETY_BUFFER = 0.42;   // Distance pushed out past the hitbox boundary
@@ -28,6 +31,21 @@ public final class ParticleManager {
     private static final int HEAL_COLOR = 0x00FF00;
 
     private static final Deque<TextParticle> PARTICLES = new ArrayListDeque<>();
+
+    private static final Vector3d camPos = new Vector3d();
+    private static final Vector3d entPos = new Vector3d();
+    private static final Vector3d dir = new Vector3d();
+    private static final Vector3d side = new Vector3d();
+    private static final Vector3d spawn = new Vector3d();
+
+    private static final String[] DAMAGE_CACHE = new String[100];
+    private static final String[] HEAL_CACHE = new String[100];
+    static {
+        for (int i = 0; i < 100; i++) {
+            DAMAGE_CACHE[i] = "-" + i + ".0";
+            HEAL_CACHE[i] = "+" + i + ".0";
+        }
+    }
 
     private ParticleManager() {
         /* This utility class should not be instantiated */
@@ -50,9 +68,14 @@ public final class ParticleManager {
         }
 
         float absoluteAmount = Math.abs(healthDelta);
-        String health = isDamage ? String.format("-%.1f", absoluteAmount) : String.format("+%.1f", absoluteAmount);
-        int color = getHealthDeltaColor(isDamage);
+        String health;
+        if (absoluteAmount == (int)absoluteAmount && absoluteAmount < 100) {
+            health = isDamage ? DAMAGE_CACHE[(int)absoluteAmount] : HEAL_CACHE[(int)absoluteAmount];
+        } else {
+            health = isDamage ? String.format("-%.1f", absoluteAmount) : String.format("+%.1f", absoluteAmount);
+        }
 
+        int color = getHealthDeltaColor(isDamage);
         processTextParticle(entity, health, color);
     }
 
@@ -70,58 +93,50 @@ public final class ParticleManager {
         double baseHeightOffset = bbHeight * TORSO_HEIGHT_MULTIPLIER;
 
         // 2. Compute the vector pointing from the entity to the player's camera
-        Vec3 cameraPos = minecraft.gameRenderer.getMainCamera().position();
+        Vec3 vanillaCam = minecraft.gameRenderer.getMainCamera().position();
+        Vec3 vanillaEnt = entity.position();
 
-        Vec3 toCameraFromFeet = cameraPos.subtract(entity.position());
+        camPos.set(vanillaCam.x, vanillaCam.y, vanillaCam.z);
+        entPos.set(vanillaEnt.x, vanillaEnt.y, vanillaEnt.z);
 
-        if (toCameraFromFeet.lengthSqr() > 0.001) {
-            Vec3 direction = toCameraFromFeet.normalize();
-            // direction.y represents the vertical pitch angle (-1.0 looking straight down, 1.0 looking straight up)
-            // If we are looking DOWN (direction.y is positive because camera is higher than feet),
-            // we dynamically increase the height offset to push the health up over the entity's head.
-            double dynamicVerticalShift = direction.y * (bbHeight * 0.5);
-            baseHeightOffset += dynamicVerticalShift;
+        camPos.sub(entPos, dir);
+
+        if (dir.lengthSquared() > 0.001) {
+            dir.normalize();
+            baseHeightOffset += dir.y * (bbHeight * 0.5);
         }
 
-        Vec3 entityCenter = entity.position().add(0, baseHeightOffset, 0);
-        Vec3 toCamera = cameraPos.subtract(entityCenter);
+        spawn.set(vanillaEnt.x, vanillaEnt.y + baseHeightOffset, vanillaEnt.z);
 
-        Vec3 spawnPos = entityCenter;
+        camPos.set(vanillaCam.x, vanillaCam.y, vanillaCam.z);
+        camPos.sub(spawn, dir);
 
-        if (toCamera.lengthSqr() > 0.001) {
-            // Flatten the vector to the horizontal plane
-            Vec3 forward3D = toCamera.normalize();
+        if (dir.lengthSquared() > 0.001) {
+            dir.normalize(); // forward3D
+            side.set(0.0, 1.0, 0.0).cross(dir).normalize();
 
-            Vec3 relativeSide = new Vec3(0.0, 1.0, 0.0).cross(forward3D).normalize();
-
-            // 3. Distance math: Pull out in front of the hitbox using the buffer constant
             double frontPushDistance = (entity.getBbWidth() / 2.0) + HITBOX_SAFETY_BUFFER;
-
-            // 4. Spread math: Configurable left/right horizontal deviation
             double randomSideOffset = (entity.getRandom().nextFloat() - SIDE_SPREAD_BIAS) * SIDE_SPREAD_MAX;
 
-            // Combine positions
-            spawnPos = entityCenter
-                    .add(forward3D.scale(frontPushDistance))
-                    .add(relativeSide.scale(randomSideOffset));
+            // Apply push modifications directly to mutable coordinates
+            spawn.add(dir.x * frontPushDistance, dir.y * frontPushDistance, dir.z * frontPushDistance);
+            spawn.add(side.x * randomSideOffset, side.y * randomSideOffset, side.z * randomSideOffset);
         }
 
         // Passed as a placeholder layout since physics movement now handles custom vertical increments
         float initialScale = CONFIG.baseParticleScale().getValue().floatValue() * entity.getScale();
 
-        spawnTextParticle(entity, health, color, spawnPos, initialScale, minecraft);
+        Vec3 finalSpawnPos = new Vec3(spawn.x, spawn.y, spawn.z);
+        spawnTextParticle(entity, health, color, finalSpawnPos, initialScale, minecraft);
     }
 
     private static void spawnTextParticle(LivingEntity entity, String health, int color, Vec3 spawnPos, float initialScale, Minecraft minecraft) {
         DoubleOption particleLifetime = CONFIG.particleLifetime();
-        TextParticle.Data particleData = new TextParticle.Data(
+        CONFIG_SCRATCHPAD.set(
                 health,
                 initialScale,
                 color,
-                TimeUtils.secondsToTicks(
-                        particleLifetime.getValue(),
-                        particleLifetime.getDefaultValue()
-                ),
+                TimeUtils.secondsToTicks(particleLifetime.getValue(), particleLifetime.getDefaultValue()),
                 CONFIG.particleRiseSpeed().getValue()
         );
 
@@ -129,7 +144,7 @@ public final class ParticleManager {
                 (ClientLevel) entity.level(),
                 spawnPos,
                 Vec3.ZERO,
-                particleData
+                CONFIG_SCRATCHPAD
         );
 
         PARTICLES.add(particle);
@@ -137,6 +152,8 @@ public final class ParticleManager {
     }
 
     private static void ensureParticleLimit(Minecraft minecraft) {
+        PARTICLES.removeIf(Particle::isAlive);
+
         int particleLimit = switch (minecraft.options.particles().get()) {
             case ALL -> 255;
             case DECREASED -> 127;
