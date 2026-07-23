@@ -89,12 +89,4 @@ public class TextParticle extends Particle {
     public double getZ() {
         return this.z;
     }
-
-    public record Data(
-            String text,
-            float initialScale,
-            int color,
-            int lifetimeInSeconds,
-            Double riseSpeed) {
-    }
 }

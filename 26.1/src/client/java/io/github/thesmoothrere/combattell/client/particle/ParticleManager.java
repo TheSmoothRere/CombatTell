@@ -25,7 +25,6 @@ public final class ParticleManager {
     private static final float TORSO_HEIGHT_MULTIPLIER = 0.65f; // Where vertically on the entity's body to target
     private static final double HITBOX_SAFETY_BUFFER = 0.42;   // Distance pushed out past the hitbox boundary
     private static final float SIDE_SPREAD_MAX = 1.3f;         // Max spread range scale for left/right variance
-    private static final float SIDE_SPREAD_BIAS = 0.5f;       // Horizontal centering bias (0.5f is perfectly centered)
 
     private static final int DAMAGE_COLOR = 0xFF0000;            // Base RGB color (Red)
     private static final int HEAL_COLOR = 0x00FF00;
@@ -116,7 +115,7 @@ public final class ParticleManager {
             side.set(0.0, 1.0, 0.0).cross(dir).normalize();
 
             double frontPushDistance = (entity.getBbWidth() / 2.0) + HITBOX_SAFETY_BUFFER;
-            double randomSideOffset = (entity.getRandom().nextFloat() - SIDE_SPREAD_BIAS) * SIDE_SPREAD_MAX;
+            double randomSideOffset = (entity.getRandom().nextFloat() - 0.5f) * SIDE_SPREAD_MAX;
 
             // Apply push modifications directly to mutable coordinates
             spawn.add(dir.x * frontPushDistance, dir.y * frontPushDistance, dir.z * frontPushDistance);
