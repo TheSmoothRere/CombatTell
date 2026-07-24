@@ -46,6 +46,7 @@ public final class ParticleManager {
         /* This utility class should not be instantiated */
     }
 
+    // TODO: fix particle should not spawning when first join/load the world
     public static void onHealthChange(LivingEntity entity, float healthDelta) {
         if (healthDelta == 0) return; // return early if there is no healthDelta
 
@@ -149,7 +150,8 @@ public final class ParticleManager {
                 spawnPos,
                 Vec3.ZERO,
                 CONFIG_SCRATCHPAD
-        );
+        ).setDistanceFactor(CONFIG.distanceFactor().getValue().floatValue()
+        ).setMaxCeiling(CONFIG.maxCeiling().getValue().floatValue());
 
         PARTICLES.add(particle);
         minecraft.particleEngine.add(particle);

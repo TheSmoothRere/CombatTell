@@ -19,6 +19,9 @@ public class CombatTellConfig implements ConfigApi {
     private final DoubleOption torsoHeightMultiplier = new DoubleOption("torsoHeightMultiplier", 0.65, 0.5, 1.0);
     private final DoubleOption hitboxSafetyBuffer = new DoubleOption("hitboxSafetyBuffer", 0.42, 0.1, 5.0);
     private final DoubleOption maxSpreadSide = new DoubleOption("maxSpreadSide", 1.3, 0.5, 5.0);
+    private final DoubleOption distanceFactor = new DoubleOption("distanceFactor", 0.15, 0.0, 5.0);
+    private final DoubleOption maxCeiling = new DoubleOption("maxCeiling", 5.0, 0.5, 5.0);
+    // TODO: add blacklist/whitelist
 
     public EnumOption<ParticleDisplays> particleDisplays() {
         return particleDisplays;
@@ -54,5 +57,13 @@ public class CombatTellConfig implements ConfigApi {
 
     public DoubleOption maxSpreadSide() {
         return maxSpreadSide;
+    }
+
+    public DoubleOption distanceFactor() {
+        return distanceFactor;
+    }
+
+    public DoubleOption maxCeiling() {
+        return maxCeiling;
     }
 }

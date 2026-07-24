@@ -21,6 +21,8 @@ public class TextParticle extends Particle {
     private final float initialScale;
     private final int color;
     private final double riseSpeed;
+    private float distanceFactor = 0.15F;
+    private float maxCeiling = 5.0F;
 
     public TextParticle(ClientLevel clientLevel, Vec3 pos, Vec3 velocity, ParticleConfig data) {
         super(clientLevel, pos.x, pos.y, pos.z, velocity.x, velocity.y, velocity.z);
@@ -54,7 +56,9 @@ public class TextParticle extends Particle {
         int argbWithAlpha = packedAlpha | rgb;
 
         // Package the active snapshot into the state collector
-        state.add(this.formattedText, this.textWidth, x, y, z, argbWithAlpha, this.initialScale);
+        state.setDistanceFactor(distanceFactor)
+                .setMaxCeiling(maxCeiling)
+                .add(this.formattedText, this.textWidth, x, y, z, argbWithAlpha, this.initialScale);
     }
 
     @Override
@@ -88,5 +92,23 @@ public class TextParticle extends Particle {
 
     public double getZ() {
         return this.z;
+    }
+
+    public float distanceFactor() {
+        return distanceFactor;
+    }
+
+    public TextParticle setDistanceFactor(float distanceFactor) {
+        this.distanceFactor = distanceFactor;
+        return this;
+    }
+
+    public float maxCeiling() {
+        return maxCeiling;
+    }
+
+    public TextParticle setMaxCeiling(float maxCeiling) {
+        this.maxCeiling = maxCeiling;
+        return this;
     }
 }

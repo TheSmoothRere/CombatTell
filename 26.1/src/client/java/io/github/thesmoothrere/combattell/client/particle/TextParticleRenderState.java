@@ -30,10 +30,8 @@ public class TextParticleRenderState implements ParticleGroupRenderState {
 
     // Allocate once for the class lifespan to completely protect submit() passes
     private final PoseStack poseStack = new PoseStack();
-
-    private static final float REFERENCE_DISTANCE = 8.0F; // The distance (in blocks) where text is exactly 100% normal scale
-    private static final float SCALE_AGGRESSION = 1.0F;  // 0.0 = Vanilla 3D physics, 1.0 = Perfect uniform RPG size. 0.75 is the sweet spot!
-    private static final float MAX_SCALE_CEILING = 5.0F;  // Hard ceiling to prevent numbers from covering the screen at massive distances
+    private float distanceFactor;
+    private float maxCeiling;
 
     public void add(FormattedCharSequence text, float width, float x, float y, float z, int color, float initialScale) {
         if (this.activeCount >= this.capacity) {
@@ -124,25 +122,27 @@ public class TextParticleRenderState implements ParticleGroupRenderState {
     }
 
     private static float scaleBasedDistanceFactor(float x, float y, float z, float initialScale) {
-        // 1. Calculate the real-time distance from the text to the camera eye
         float currentDistance = Mth.sqrt(x * x + y * y + z * z);
+        float distanceMultiplier = initialScale + (currentDistance * 0.15F);
+        float clampedDistanceScale = Mth.clamp(distanceMultiplier, 1.0F, 5.0F);
+        return initialScale * clampedDistanceScale;
+    }
 
-        // 2. Prevent division-by-zero errors if the particle spawns inside the camera lens
-        if (currentDistance < 0.1F) {
-            return initialScale;
-        }
+    public float distanceFactor() {
+        return distanceFactor;
+    }
 
-        // 3. Compute the pure mathematical perspective correction factor.
-        // At 16 blocks away (with a reference of 8), this equals 2.0x, perfectly counteracting 3D shrinkage.
-        float perspectiveCorrection = currentDistance / REFERENCE_DISTANCE;
+    public TextParticleRenderState setDistanceFactor(float distanceFactor) {
+        this.distanceFactor = distanceFactor;
+        return this;
+    }
 
-        // 4. Interpolate linearly between standard 3D perspective (1.0) and uniform correction.
-        // This allows you to smoothly blend the long-range behavior without hard blocks!
-        float blendedScale = Mth.lerp(SCALE_AGGRESSION, 1.0F, perspectiveCorrection);
+    public float maxCeiling() {
+        return maxCeiling;
+    }
 
-        // 5. Apply the safe boundary checks
-        float finalScaleFactor = Mth.clamp(blendedScale, 1.0F, MAX_SCALE_CEILING);
-
-        return initialScale * finalScaleFactor;
+    public TextParticleRenderState setMaxCeiling(float maxCeiling) {
+        this.maxCeiling = maxCeiling;
+        return this;
     }
 }
