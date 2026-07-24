@@ -9,7 +9,6 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.particle.Particle;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.ArrayListDeque;
@@ -19,9 +18,7 @@ import org.joml.Vector3d;
 
 import java.util.Deque;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Environment(EnvType.CLIENT)
 public final class ParticleManager {
@@ -33,8 +30,8 @@ public final class ParticleManager {
     private static final CombatTellConfig CONFIG = ConfigManager.get(CombatTellConfig.class);
     private static final ParticleConfig CONFIG_SCRATCHPAD = new ParticleConfig();
 
-    private static final int DAMAGE_COLOR = 0xFF0000;            // Base RGB color (Red)
-    private static final int HEAL_COLOR = 0x00FF00;
+    private static final int DAMAGE_COLOR = 0xFF0000; // default hard color: red
+    private static final int HEAL_COLOR = 0x00FF00; // default hard color: green
 
     private static final Deque<TextParticle> PARTICLES = new ArrayListDeque<>();
 
@@ -189,7 +186,7 @@ public final class ParticleManager {
     }
 
     private static void ensureParticleLimit(Minecraft minecraft) {
-        PARTICLES.removeIf(Particle::isAlive);
+        PARTICLES.removeIf(p -> !p.isAlive());
 
         int particleLimit = switch (minecraft.options.particles().get()) {
             case ALL -> 255;
