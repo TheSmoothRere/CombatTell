@@ -10,15 +10,26 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.Particle;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.ArrayListDeque;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3d;
 
 import java.util.Deque;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Environment(EnvType.CLIENT)
 public final class ParticleManager {
+
+    private ParticleManager() {
+        /* This utility class should not be instantiated */
+    }
+
     private static final CombatTellConfig CONFIG = ConfigManager.get(CombatTellConfig.class);
     private static final ParticleConfig CONFIG_SCRATCHPAD = new ParticleConfig();
 
@@ -35,6 +46,7 @@ public final class ParticleManager {
 
     private static final String[] DAMAGE_CACHE = new String[100];
     private static final String[] HEAL_CACHE = new String[100];
+
     static {
         for (int i = 0; i < 100; i++) {
             DAMAGE_CACHE[i] = "-" + i + ".0";
@@ -42,13 +54,25 @@ public final class ParticleManager {
         }
     }
 
-    private ParticleManager() {
-        /* This utility class should not be instantiated */
+    private static final Set<Identifier> WHITELIST = new HashSet<>();
+    private static final Set<Identifier> BLACKLIST = new HashSet<>();
+
+    public static void syncConfigState() {
+        WHITELIST.clear();
+        CONFIG.whitelist().getValue().values().stream()
+                .map(Identifier::parse)
+                .forEach(WHITELIST::add);
+
+        BLACKLIST.clear();
+        CONFIG.blacklist().getValue().values().stream()
+                .map(Identifier::parse)
+                .forEach(BLACKLIST::add);
     }
 
-    // TODO: fix particle should not spawning when first join/load the world
     public static void onHealthChange(LivingEntity entity, float healthDelta) {
-        if (healthDelta == 0) return; // return early if there is no healthDelta
+        if (!isEntityAllowed(entity)) return; // return early if the entity is not allowed
+
+        if (healthDelta == 0 || entity.tickCount == 0) return; // return early if there is no healthDelta
 
         boolean isDamage = healthDelta > 0;
 
@@ -65,14 +89,21 @@ public final class ParticleManager {
 
         float absoluteAmount = Math.abs(healthDelta);
         String health;
-        if (absoluteAmount == (int)absoluteAmount && absoluteAmount < 100) {
-            health = isDamage ? DAMAGE_CACHE[(int)absoluteAmount] : HEAL_CACHE[(int)absoluteAmount];
+        if (absoluteAmount == (int) absoluteAmount && absoluteAmount < 100) {
+            health = isDamage ? DAMAGE_CACHE[(int) absoluteAmount] : HEAL_CACHE[(int) absoluteAmount];
         } else {
             health = isDamage ? String.format("-%.1f", absoluteAmount) : String.format("+%.1f", absoluteAmount);
         }
 
         int color = getHealthDeltaColor(isDamage);
         processTextParticle(entity, health, color);
+    }
+
+    private static boolean isEntityAllowed(LivingEntity entity) {
+        Identifier entityId = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
+
+        if (CONFIG.whitelistMode().getValue()) return WHITELIST.contains(entityId);
+        else return !BLACKLIST.contains(entityId);
     }
 
     private static int getHealthDeltaColor(boolean isDamage) {

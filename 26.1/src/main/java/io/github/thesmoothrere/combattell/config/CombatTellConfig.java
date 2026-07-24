@@ -4,9 +4,7 @@ import io.github.thesmoothrere.combattell.Constants;
 import io.github.thesmoothrere.combattell.util.ParticleDisplays;
 import io.github.thesmoothrere.relib.api.Config;
 import io.github.thesmoothrere.relib.api.ConfigApi;
-import io.github.thesmoothrere.relib.config.option.DoubleOption;
-import io.github.thesmoothrere.relib.config.option.EnumOption;
-import io.github.thesmoothrere.relib.config.option.StringOption;
+import io.github.thesmoothrere.relib.config.option.*;
 
 @Config(name = Constants.MOD_ID)
 public class CombatTellConfig implements ConfigApi {
@@ -21,7 +19,9 @@ public class CombatTellConfig implements ConfigApi {
     private final DoubleOption maxSpreadSide = new DoubleOption("maxSpreadSide", 1.3, 0.5, 5.0);
     private final DoubleOption distanceFactor = new DoubleOption("distanceFactor", 0.15, 0.0, 5.0);
     private final DoubleOption maxCeiling = new DoubleOption("maxCeiling", 5.0, 0.5, 5.0);
-    // TODO: add blacklist/whitelist
+    private final BooleanOption whitelistMode = new BooleanOption("whitelistMode", false);
+    private final ListStringOption whitelist = new ListStringOption("whitelist");
+    private final ListStringOption blacklist = new ListStringOption("blacklist");
 
     public EnumOption<ParticleDisplays> particleDisplays() {
         return particleDisplays;
@@ -65,5 +65,17 @@ public class CombatTellConfig implements ConfigApi {
 
     public DoubleOption maxCeiling() {
         return maxCeiling;
+    }
+
+    public BooleanOption whitelistMode() {
+        return whitelistMode;
+    }
+
+    public ListStringOption whitelist() {
+        return whitelist;
+    }
+
+    public ListStringOption blacklist() {
+        return blacklist;
     }
 }

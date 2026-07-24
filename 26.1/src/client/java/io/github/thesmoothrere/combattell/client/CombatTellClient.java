@@ -1,6 +1,7 @@
 package io.github.thesmoothrere.combattell.client;
 
 import io.github.thesmoothrere.combattell.Constants;
+import io.github.thesmoothrere.combattell.client.particle.ParticleManager;
 import io.github.thesmoothrere.combattell.client.particle.TextParticleGroup;
 import io.github.thesmoothrere.combattell.client.particle.TextParticleRenderType;
 import net.fabricmc.api.ClientModInitializer;
@@ -13,6 +14,7 @@ public class CombatTellClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         Constants.LOGGER.info(Constants.MOD_NAME + " client initialized!");
+        ParticleManager.syncConfigState();
         ParticleGroupRegistry.register(TextParticleRenderType.TEXT, TextParticleGroup::new);
     }
 }
